@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Audio Booster",
+  "version": "1.0",
+  "description": "A professional browser volume booster with stereo panning and flip controls.",
+
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+
+  "action": {
+    "default_popup": "popup.html"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
