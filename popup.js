@@ -160,5 +160,9 @@ document.addEventListener("DOMContentLoaded", () => {
     themeToggle.addEventListener("click", ()=>{
         toggleTheme();
     });
-
+    const loc = 'https://github.com/Unknown-Entity226/Audio-Booster-for-Firefox';
+    const githubLogo = document.getElementById("githubLogo");
+    githubLogo.addEventListener("click", () => {
+        window.open(loc, '_blank');
+    });
 });

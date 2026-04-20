@@ -8,7 +8,11 @@
     "storage",
     "activeTab"
   ],
-
+  "icons":{
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon.png",
+    "128": "assets/icons/icon.png"
+  },
   "action": {
     "default_popup": "popup.html"
   },
