@@ -2,8 +2,9 @@
 
 A powerful and lightweight Firefox extension that enhances your browsing audio experience with real-time controls like volume boosting, stereo panning, mono conversion, and channel flipping.
 
-##Screenshots:
+## Screenshot:
 <img width="473" height="381" alt="image" src="https://github.com/user-attachments/assets/5f4db9b4-cecc-4c17-8e71-d8a0a7591042" />
+<img width="483" height="385" alt="image" src="https://github.com/user-attachments/assets/3382e7a5-3dc3-46db-ab5c-d7025536d3a3" />
 
 
 ## Features
