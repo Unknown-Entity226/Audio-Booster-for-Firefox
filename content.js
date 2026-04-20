@@ -33,11 +33,11 @@ function createAudioPipeline(media) {
     splitterNode.channelCount = 2;
     splitterNode.channelCountMode ="explicit";
     const mergerNode = audioContext.createChannelMerger(2);
-    const compressorNode = audioContext.createDynamicsCompressor();
+    // const compressorNode = audioContext.createDynamicsCompressor();
 
     sourceNode.connect(gainNode);
-    gainNode.connect(compressorNode);
-    compressorNode.connect(splitterNode);
+    gainNode.connect(splitterNode);
+    // compressorNode.connect(splitterNode);
     splitterNode.connect(mergerNode, 0, 0);
     splitterNode.connect(mergerNode, 1, 1);
     mergerNode.connect(panNode);
