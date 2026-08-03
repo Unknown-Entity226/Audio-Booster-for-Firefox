@@ -1,12 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Audio Enhancer for Firefox",
-  "version": "1.0",
+  "version": "2",
   "description": "A professional browser volume booster with gain and pan controls.",
   "permissions": [
-    "storage",
-    "activeTab",
-    "scripting"
+    "storage"
   ],
   "host_permissions": [
     "<all_urls>"
