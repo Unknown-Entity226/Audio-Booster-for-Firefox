@@ -1,239 +1,270 @@
-const pipelines = new Map();
-let currentSettings = {
-    gain: 1,
-    pan: 0,
-    flip: false,
-    mono: false
-};
-
-const audioContext = new AudioContext();
-(async function loadInitialSettings() {
-    const data = await browser.storage.local.get();
-
-    currentSettings.gain = data.gain ?? currentSettings.gain;
-    currentSettings.pan = data.pan ?? currentSettings.pan;
-    currentSettings.flip = data.flip ?? currentSettings.flip;
-    currentSettings.mono = data.mono ?? currentSettings.mono;
-
-    applySettingsToAllPipelines();
-})();
-function createAudioPipeline(media) {
-    if (pipelines.has(media)) return;
-    let sourceNode;
-    try {
-        sourceNode = audioContext.createMediaElementSource(media);
-    } catch (error) {
-        console.error("Error creating media element source:", error);
-        return;
-    }
-    const gainNode = audioContext.createGain();
-    const panNode = audioContext.createStereoPanner();
-    const compressorNode = audioContext.createDynamicsCompressor();
-    const splitterNode = audioContext.createChannelSplitter(2);
-    splitterNode.channelCount = 2;
-    splitterNode.channelCountMode = "explicit";
-    const mergerNode = audioContext.createChannelMerger(2);
-
-    // Compressor settings:
-    compressorNode.threshold.setValueAtTime(-12, audioContext.currentTime);
-    compressorNode.knee.setValueAtTime(30, audioContext.currentTime);      // Smoothness of transition
-    compressorNode.ratio.setValueAtTime(12, audioContext.currentTime);     // Compression ratio
-    compressorNode.attack.setValueAtTime(0.003, audioContext.currentTime); // Fast attack (3ms) to catch sudden loud peaks
-    compressorNode.release.setValueAtTime(0.25, audioContext.currentTime); // Release time (250ms)
-
-    const gainLL = audioContext.createGain();
-    const gainLR = audioContext.createGain();
-    const gainRR = audioContext.createGain();
-    const gainRL = audioContext.createGain();
-
-    splitterNode.connect(gainLL, 0);
-    splitterNode.connect(gainLR, 0);
-    splitterNode.connect(gainRL, 1);
-    splitterNode.connect(gainRR, 1);
-
-    gainLL.connect(mergerNode, 0, 0);
-    gainRL.connect(mergerNode, 0, 0);
-    gainRR.connect(mergerNode, 0, 1);
-    gainLR.connect(mergerNode, 0, 1);
-
-    const pipeline = {
-        audioContext,
-        sourceNode,
-        gainNode,
-        panNode,
-        splitterNode,
-        mergerNode,
-        compressorNode,
-        matrix: {
-            gainLL,
-            gainLR,
-            gainRL,
-            gainRR
-        }
-    };
-    pipelines.set(media, pipeline);
-    applySettings(pipeline);
+:root {
+    --bg: #f3f4f6;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #6b7280;
+    --displaycolor: #65577d;
+    --accent-2: #06b6d4;
+    --accent-alert: #ef4444;
+    --shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+    --radius: 12px;
+    --gap: 12px;
+    --progress: rgb(166, 166, 246);
+    --surface-grad-start: rgba(255, 255, 255, 0.6);
+    --surface-grad-end: rgba(255, 255, 255, 0.35);
+    --toggle-icon: url("assets/dark-theme.png");
+    --mute-icon: url("assets/mute.png");
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
-function applySettings(pipeline) {
-    const { gain, pan, flip, mono } = currentSettings;
-    const now = pipeline.audioContext.currentTime;
 
-    const isReset = (gain == 1 && pan == 0 && !flip && !mono);
-    try {
-        pipeline.sourceNode.disconnect();
-        pipeline.gainNode.disconnect();
-        pipeline.mergerNode.disconnect();
-
-        pipeline.panNode.disconnect();
-        pipeline.compressorNode.disconnect();
-    }
-    catch (error) {
-        console.log("Error in ApplySettins: ", error);
-    }
-    if (isReset) {
-        pipeline.sourceNode.connect(pipeline.audioContext.destination);
-    }
-    else {
-        pipeline.sourceNode.connect(pipeline.gainNode);
-        pipeline.gainNode.connect(pipeline.splitterNode);
-
-        if (mono) {
-
-            pipeline.matrix.gainLL.gain.setTargetAtTime(0.5, now, 0.01);
-            pipeline.matrix.gainRR.gain.setTargetAtTime(0.5, now, 0.01);
-            pipeline.matrix.gainLR.gain.setTargetAtTime(0.5, now, 0.01);
-            pipeline.matrix.gainRL.gain.setTargetAtTime(0.5, now, 0.01);
-
-        } else if (flip) {
-
-            pipeline.matrix.gainLL.gain.setTargetAtTime(0, now, 0.01);
-            pipeline.matrix.gainRR.gain.setTargetAtTime(0, now, 0.01);
-            pipeline.matrix.gainLR.gain.setTargetAtTime(1, now, 0.01);
-            pipeline.matrix.gainRL.gain.setTargetAtTime(1, now, 0.01);
-
-        } else {
-
-            pipeline.matrix.gainLL.gain.setTargetAtTime(1, now, 0.01);
-            pipeline.matrix.gainRR.gain.setTargetAtTime(1, now, 0.01);
-            pipeline.matrix.gainLR.gain.setTargetAtTime(0, now, 0.01);
-            pipeline.matrix.gainRL.gain.setTargetAtTime(0, now, 0.01);
-        }
-
-        pipeline.mergerNode.connect(pipeline.panNode);
-
-        if (gain >= 5) {
-            pipeline.panNode.connect(pipeline.compressorNode);
-            pipeline.compressorNode.connect(pipeline.audioContext.destination);
-        }
-        else {
-            pipeline.panNode.connect(pipeline.audioContext.destination);
-
-        }
-        // This is done so that the volume changes gradually and no pop sounds can occur
-        pipeline.gainNode.gain.setTargetAtTime(gain, now, 0.01);
-        pipeline.panNode.pan.setTargetAtTime(pan, now, 0.01);
-    }
+[data-theme="dark"] {
+    --bg: #0b1220;
+    --card: #0f1724;
+    --text: #e6eef8;
+    --muted: #9aa6b2;
+    --displaycolor: #dbe7f3;
+    --accent: #7c3aed;
+    --accent-2: #0891b2;
+    --shadow: 0 6px 18px rgba(2, 6, 23, 0.7);
+    --surface-grad-start: rgba(21, 30, 49, 0.9);
+    --surface-grad-end: rgba(15, 23, 36, 0.75);
+    --toggle-icon: url("assets/light-theme.png");
+    --mute-icon: url("assets/mute.png");
 
 }
 
-function applySettingsToAllPipelines() {
-
-    // since there are  multiple media elements so this is done to apply the same settings on every element in one go
-    // might change this so that the user can manually handle all the media elements on their own
-    pipelines.forEach(pipeline => {
-        applySettings(pipeline);
-    });
+* {
+    box-sizing: border-box;
 }
 
-function captureAudioElements(root = document) {
-    return root.querySelectorAll("audio, video");
+html,
+body {
+    height: 100%;
 }
 
-const processedElements = new WeakSet();
-
-function processAudioElements(root = document) {
-    const mediaElements = captureAudioElements(root);
-    mediaElements.forEach(element => {
-        if (!processedElements.has(element)) {
-            processedElements.add(element);
-            createAudioPipeline(element);
-        }
-    });
+body {
+    margin: 0;
+    padding: 10px;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 200px;
+    -moz-osx-font-smoothing: grayscale;
+    width: 380px;
+    box-sizing: border-box;
+    margin: 0;
+    background: linear-gradient(180deg, var(--surface-grad-start), var(--surface-grad-end));
+    background-color: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
 }
-function resumeContext() {
-    if (audioContext.state === "suspended") {
-        audioContext.resume();
-    }
+
+#popup-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
 }
 
-function cleanupPipeline(media) {
-    const p = pipelines.get(media);
-    if (!p) return;
-
-    try {
-        p.sourceNode.disconnect();
-        p.gainNode.disconnect();
-        p.splitterNode.disconnect();
-        p.matrix.gainLL.disconnect();
-        p.matrix.gainRL.disconnect();
-        p.matrix.gainLR.disconnect();
-        p.matrix.gainRR.disconnect();
-        p.mergerNode.disconnect();
-        p.panNode.disconnect();
-        p.compressorNode.disconnect();
-    } catch { }
-
-    pipelines.delete(media);
-    // Done so that when the application re-renders, the same element can be encountered again
-    processedElements.delete(media);
+#popup-header h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--displaycolor, var(--text));
+    letter-spacing: 0.2px;
 }
- 
 
-document.addEventListener("click", resumeContext, { once: true });
-document.addEventListener("keydown", resumeContext, { once: true });
-
-processAudioElements(document);
-
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach(mutation => {
-        mutation.addedNodes.forEach(node => {
-            if (node.nodeType === 1) {
-                if (node.matches?.("audio, video")) {
-                    createAudioPipeline(node);
-                } else {
-                    processAudioElements(node);
-                }
-            }
-        });
-        mutation.removedNodes.forEach(node => {
-            if (node.nodeType !== 1) return;
-
-            if (pipelines.has(node)) {
-                cleanupPipeline(node);
-            }
-
-            // this can give access to elements which change the parent element such as "div" and are left during cleanups
-            if (node.querySelectorAll) {
-                captureAudioElements(node).forEach(el => {
-                    if (pipelines.has(el)) {
-                        cleanupPipeline(el);
-                    }
-                });
-            }
-        });
-    });
-});
+[data-theme="dark"] #popup-header {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+}
 
 
-observer.observe(document.body, { childList: true, subtree: true });
-// now everytime the storage value changes, the settings are applied, improves synchronization
-browser.storage.onChanged.addListener((changes, area) => {
-    if (area == "local") {
-        if (changes.gain) currentSettings.gain = changes.gain.newValue;
-        if (changes.pan) currentSettings.pan = changes.pan.newValue;
-        if (changes.flip) currentSettings.flip = changes.flip.newValue;
-        if (changes.mono) currentSettings.mono = changes.mono.newValue;
-        applySettingsToAllPipelines();
-    }
+#main {
+    margin: 0;
+    background: linear-gradient(180deg, var(--surface-grad-start), var(--surface-grad-end));
+    background-color: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+}
 
-});
+#gain,
+#pan {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+}
+
+#gain label:first-child,
+#pan label:first-child {
+    min-width: 48px;
+    font-weight: 600;
+}
+
+.value {
+    min-width: 38px;
+    text-align: right;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+input[type="range"] {
+    height: 6px;
+    background: var(--bg);
+    outline: none;
+    flex: 1;
+    width: 40px;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 3px solid var(--accent-2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+}
+input[type = "range"]::-moz-range-track{
+    background: transparent;
+
+}
+input[type="range"]::-moz-range-progress{
+    background-color: var(--progress, var(--accent-2));
+    width: 100%;
+}
+
+#audio-sides {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 6px 4px;
+}
+
+#audio-sides input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-2);
+}
+
+#quick-controllers {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--text);
+    transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+}
+
+.actions:focus {
+    outline: 2px solid rgba(99, 102, 241, 0.18);
+    outline-offset: 2px
+}
+
+.actions:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.actions img {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+#resetButton {
+    background: var(--accent-2);
+    color: white;
+    border: none
+}
+
+#resetButton:hover {
+    transform: translateY(-2px) scale(1.01)
+}
+
+#muteButton {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    background-image: var(--mute-icon);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100% 100%;
+}
+
+#themeToggle {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    background-image: var(--toggle-icon);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100% 100%;
+    font-size: 0;
+    line-height: 0;
+}
+
+#githubLogo {
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+    border-radius: 50%;
+    /* background-image: url("assets/github_logo.png"); */
+    background-color: white;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100% 100%;
+    cursor: pointer;
+}
+
+[data-theme="dark"] #muteButton,
+[data-theme="dark"] #githubLogo{
+    background-color: #ffffff;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+[data-theme="dark"] #muteButton:hover,
+[data-theme="dark"] #githubLogo:hover {
+    transform: scale(1.07);
+    background-color: #ffffff;
+   
+}
+
+
+#gainValue,
+#panValue {
+    font-variant-numeric: tabular-nums;
+    color: var(--displaycolor, var(--text));
+}
+
+button:focus,
+input:focus {
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+#note {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    padding: 0 8px;
+}
