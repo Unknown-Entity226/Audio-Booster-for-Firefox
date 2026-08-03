@@ -36,9 +36,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (data.gain !== undefined) {
             updateGain(data.gain);
-            previousGain = data.gain;
         }else{
             updateGain(1);
+        }
+        // added another storage parameter: lastGain which will take note of last gain value when user mute
+        // this avoid the issues where the user close the popup in mute position and when the popup is again loaded, the gain value remains 0
+        if (data.lastGain !== undefined && data.lastGain > 0) {
+            previousGain = data.lastGain;
+        } else if (data.gain !== undefined && data.gain > 0) {
+            previousGain = data.gain;
+        } else {
+            previousGain = 1;
         }
 
         if (data.pan !== undefined) {
@@ -64,23 +72,22 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             setTheme("light");
         }
+
+        // Guard against stale storage saved by an older version of this
+        // popup that could leave both mono and flip set to true at once.
+        checkMonoAndFlip();
     }
 
     loadInitialState();
-    async function sendUpdate(data) {
-        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-        if (tabs.length > 0) {
-            browser.tabs.sendMessage(tabs[0].id, data);
-        }
-    }
+
     async function storeData(data) {
-        await browser.storage.local.get();
-        sendUpdate(data);
+        await browser.storage.local.set(data);
     }
     function updateGain(val) {
         gainSlider.value = val;
         gainValue.textContent = `${Math.round(val * 100)}%`;
-        const colorVar = val > 4 ? "var(--accent-alert)" : "var(--accent-blue)";
+       
+        const colorVar = val > 4 ? "var(--accent-alert)" : "var(--accent-2)";
         const textVar = val > 4 ? "var(--accent-alert)" : "var(--text)";
 
         gainSlider.style.setProperty("--progress", colorVar);
@@ -100,6 +107,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (mono && flip) {
             flipBt.checked = false;
+            // fixed the issue of flip only working on the UI and not on the serviceworker 
+            storeData({ flip: false });
 
             if (!advice) {
                 advice = document.createElement("p");
@@ -122,7 +131,12 @@ document.addEventListener("DOMContentLoaded", () => {
     gainSlider.addEventListener("input", (e) => {
         const val = parseFloat(e.target.value);
         updateGain(val);
-        storeData({ gain: val });
+        if (val > 0) {
+            previousGain = val;
+            storeData({ gain: val, lastGain: val });
+        } else {
+            storeData({ gain: val });
+        }
     });
     panSlider.addEventListener("input", (e) => {
         const val = parseFloat(e.target.value);
@@ -135,13 +149,14 @@ document.addEventListener("DOMContentLoaded", () => {
         previousGain = 1;
         flipBt.checked = false;
         monoBt.checked = false;
-        storeData({ gain: 1, pan: 0 });
+        storeData({ gain: 1, pan: 0, flip:false, mono: false, lastGain: 1});
     });
     muteBt.addEventListener("click", () => {
-        if (gainSlider.value > 0) {
-            previousGain = gainSlider.value;
+        const val = Number(gainSlider.value);
+        if (val> 0) {
+            previousGain = val;
             updateGain(0);
-            storeData({ gain: 0 });
+            storeData({ gain: 0, lastGain: val });
         } else {
             updateGain(previousGain);
             storeData({ gain: previousGain });
